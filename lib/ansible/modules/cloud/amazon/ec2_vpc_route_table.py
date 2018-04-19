@@ -416,7 +416,7 @@ def route_spec_matches_route(route_spec, route):
 
 
 def route_spec_matches_route_cidr(route_spec, route):
-    return route_spec['DestinationCidrBlock'] == route['DestinationCidrBlock']
+    return route_spec['DestinationCidrBlock'] == route.get('DestinationCidrBlock')
 
 
 def rename_key(d, old_key, new_key):
@@ -439,17 +439,20 @@ def ensure_routes(connection=None, module=None, route_table=None, route_specs=No
     for route_spec in route_specs:
         match = index_of_matching_route(route_spec, routes_to_match)
         if match is None:
-            route_specs_to_create.append(route_spec)
+            if route_spec.get('DestinationCidrBlock'):
+                route_specs_to_create.append(route_spec)
         else:
             if match[0] == "replace":
-                route_specs_to_recreate.append(route_spec)
+                if route_spec.get('DestinationCidrBlock'):
+                    route_specs_to_recreate.append(route_spec)
             del routes_to_match[match[1]]
 
     routes_to_delete = []
     if purge_routes:
         for r in routes_to_match:
             if r['Origin'] == 'CreateRoute':
-                routes_to_delete.append(r)
+                if r.get('DestinationCidrBlock'):
+                    routes_to_delete.append(r)
 
     changed = bool(routes_to_delete or route_specs_to_create or route_specs_to_recreate)
     if changed and not check_mode:
